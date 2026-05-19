@@ -29,7 +29,7 @@
 1. 将本节点文件夹放入 ComfyUI 的 `custom_nodes` 目录:
    ```bash
    cd ComfyUI/custom_nodes
-   git clone <repository-url> ComfyUI-RIFE
+   git clone git@github.com:er1cw00/ComfyUI-RIFE.git ComfyUI-RIFE
    ```
 
 2. 安装依赖:

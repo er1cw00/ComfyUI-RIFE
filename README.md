@@ -1,6 +1,6 @@
 # ComfyUI-RIFE
 
-English | [中文](README_zh.md) 
+English | [中文](README_zhgit .md) 
 
 RIFE video frame interpolation node for ComfyUI, based on Practical-RIFE implementation.
 
@@ -29,7 +29,7 @@ Models are automatically downloaded to `ComfyUI/models/rife/` directory.
 1. Clone this repository into ComfyUI's `custom_nodes` directory:
    ```bash
    cd ComfyUI/custom_nodes
-   git clone <repository-url> ComfyUI-RIFE
+   git clone git@github.com:er1cw00/ComfyUI-RIFE.git ComfyUI-RIFE
    ```
 
 2. Install dependencies:
