@@ -1,0 +1,11 @@
+from .rife_node import RIFE_VFI
+
+NODE_CLASS_MAPPINGS = {
+    "RIFE_VFI": RIFE_VFI,
+}
+
+NODE_DISPLAY_NAME_MAPPINGS = {
+    "RIFE_VFI": "RIFE_VFI",
+}
+
+__all__ = ['NODE_CLASS_MAPPINGS', 'NODE_DISPLAY_NAME_MAPPINGS']
