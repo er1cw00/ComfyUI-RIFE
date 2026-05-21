@@ -91,7 +91,7 @@ class RIFE_VFI:
                 "scale_factor": ([0.25, 0.5, 1.0, 2.0, 4.0], {"default": 1.0}),
                 # Opt 1: Precision — float32 is safe, float16 is ~2x faster/half VRAM,
                 #         bfloat16 is safer than float16 on Ampere+ GPUs (RTX 30xx+)
-                "dtype": (DTYPE_OPTIONS, {"default": "float32"}),
+                "dtype": (DTYPE_OPTIONS, {"default": "bfloat16"}),
                 # Opt 2: torch.compile() — JIT-compiles the model graph for 10-30% speedup.
                 #         First inference will be slow (compilation), subsequent ones faster.
                 #         Requires PyTorch 2.0+. Disable if you hit errors on older builds.
@@ -127,11 +127,11 @@ class RIFE_VFI:
         frames: torch.Tensor,
         clear_cache_after_n_frames: int = 10,
         multiplier: typing.SupportsInt = 2,
-        fast_mode: bool = False,
-        ensemble: bool = False,
+        fast_mode: bool = True,
+        ensemble: bool = True,
         scale_factor: float = 1.0,
         dtype: str = "bfloat16",
-        torch_compile: bool = False,
+        torch_compile: bool = True,
         batch_size: int = 1,
         optional_interpolation_states: InterpolationStateList = None,
         **kwargs
@@ -264,11 +264,9 @@ class RIFE_VFI:
                     if tasks_remaining_per_pair[pair_idx] == 0:
                         frames_processed_since_cache_clear += 1
                         if frames_processed_since_cache_clear >= clear_cache_after_n_frames:
-                            print("Comfy-VFI: Clearing cache...", end=' ')
                             soft_empty_cache()
                             gc.collect()
                             frames_processed_since_cache_clear = 0
-                            print("Done cache clearing")
 
                 pos += len(batch_tasks)
 
