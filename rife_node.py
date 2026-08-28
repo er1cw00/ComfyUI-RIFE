@@ -5,6 +5,7 @@ import pathlib
 import einops
 import folder_paths
 import typing
+import time
 import urllib.request
 import urllib.error
 #from vfi_utils import load_file_from_github_release
@@ -160,7 +161,7 @@ class RIFE_VFI:
         Returns:
             tuple: A tuple containing the output interpolated frames.
         """
-
+        start_time = time.perf_counter()
         model_path = self._get_model_path(ckpt_name)
         arch_ver = CKPT_NAME_VER_DICT[ckpt_name]
 
@@ -285,4 +286,8 @@ class RIFE_VFI:
 
         # Always return float32 — numpy and all downstream ComfyUI nodes require it
         out_tensor = torch.cat(output_frames, dim=0).to(torch.float32)
+
+        stop_time = time.perf_counter()
+        elapsed_time = stop_time - start_time
+        print(f"VFI elapsed: {elapsed_time:.4f} s ({elapsed_time * 1000:.2f} ms)")
         return (postprocess_frames(out_tensor),)
