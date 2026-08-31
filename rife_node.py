@@ -171,7 +171,7 @@ class RIFE_VFI:
 
         torch_dtype = DTYPE_MAP[dtype]
         device = get_torch_device()
-
+        print(f'{time.time():.3f}: device: {device}, dtype: {frames.dtype}')
         #  4.26 disable ensemble
         if arch_ver == "4.26":
             ensemble = False  # 4.26 版本不支持 ensemble
@@ -190,10 +190,15 @@ class RIFE_VFI:
             if torch_compile:
                 interpolation_model = torch.compile(interpolation_model)
             _model_cache[cache_key] = interpolation_model
-            print(f"Comfy-VFI: Loaded and cached model {ckpt_name} ({dtype}{'+ torch.compile' if torch_compile else ''})")
+            print(f"{time.time():.3f}: Comfy-VFI: Loaded and cached model {ckpt_name} ({dtype}{'+ torch.compile' if torch_compile else ''})")
         else:
             interpolation_model = _model_cache[cache_key]
-            print(f"Comfy-VFI: Using cached model {ckpt_name} ({dtype}{'+ torch.compile' if torch_compile else ''})")
+            print(f"{time.time():.3f}: Comfy-VFI: Using cached model {ckpt_name} ({dtype}{'+ torch.compile' if torch_compile else ''})")
+
+        print(
+            f"Comfy-VFI: model device={next(interpolation_model.parameters()).device}, "
+            f"dtype={next(interpolation_model.parameters()).dtype}"
+        )
 
         frames = preprocess_frames(frames)
 
@@ -234,6 +239,10 @@ class RIFE_VFI:
         # Opt 5: inference_mode disables autograd tracking entirely — lower overhead than no_grad().
         # Opt 7: process batch_size tasks per GPU call. IFNet supports batched tensor timesteps,
         #         so multiple (pair, timestep) combinations can be inferred in a single forward pass.
+        print(f"{time.time():.3f}: Comfy-VFI: start inference")
+        total_inference_time = 0.0
+        total_gpu_to_cpu_time = 0.0
+        
         with torch.inference_mode():
             while pos < len(tasks):
                 batch_tasks = tasks[pos : pos + batch_size]
@@ -249,6 +258,8 @@ class RIFE_VFI:
                 # Batched timestep tensor: shape [B, 1, 1, 1] — IFNet expands it internally
                 timestep_tensor = torch.tensor(timestep_list, dtype=torch_dtype, device=device).view(-1, 1, 1, 1)
 
+                t_infer = time.perf_counter()
+                
                 middle_frames = interpolation_model(
                     frame0_batch,
                     frame1_batch,
@@ -256,8 +267,16 @@ class RIFE_VFI:
                     scale_list,
                     fast_mode,
                     ensemble,
-                ).clamp(0, 1).detach().cpu()
+                ).clamp(0, 1)
 
+                infer_elapsed = time.perf_counter() - t_infer
+                total_inference_time += infer_elapsed
+
+                t_copy = time.perf_counter()
+                middle_frames = middle_frames.detach().cpu()
+                copy_elapsed = time.perf_counter() - t_copy
+                total_gpu_to_cpu_time += copy_elapsed
+                
                 for idx, (pair_idx, _) in enumerate(batch_tasks):
                     results[pair_idx].append(middle_frames[idx : idx + 1].to(dtype=torch_dtype))
                     tasks_remaining_per_pair[pair_idx] -= 1
@@ -279,15 +298,16 @@ class RIFE_VFI:
                 output_frames.append(mid)
         output_frames.append(frames[-1:].to(dtype=torch_dtype))
 
-        print("Comfy-VFI: Final clearing cache...", end=' ')
+        print(f"{time.time():.3f}: Comfy-VFI: Final clearing cache...")
         soft_empty_cache()
-        print("Done cache clearing")
-        print(f"Comfy-VFI done! {sum(len(v) for v in results.values()) + len(frames)} frames generated")
-
+        print(f"{time.time():.3f}: Done cache clearing")
+        print(f"{time.time():.3f}: Comfy-VFI inference_time: {total_inference_time:.4f}; copy_time: {total_gpu_to_cpu_time:.4f}")
+        print(f"{time.time():.3f}: Comfy-VFI done! {sum(len(v) for v in results.values()) + len(frames)} frames generated")
+        
         # Always return float32 — numpy and all downstream ComfyUI nodes require it
-        out_tensor = torch.cat(output_frames, dim=0).to(torch.float32)
+        out_tensor = torch.cat(output_frames, dim=0).to(torch.float16)
 
         stop_time = time.perf_counter()
         elapsed_time = stop_time - start_time
-        print(f"VFI elapsed: {elapsed_time:.4f} s ({elapsed_time * 1000:.2f} ms)")
+        print(f"{time.time():.3f}: VFI elapsed: {elapsed_time:.3f} s ({elapsed_time * 1000:.2f} ms)\n")
         return (postprocess_frames(out_tensor),)
