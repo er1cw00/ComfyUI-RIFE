@@ -305,7 +305,7 @@ class RIFE_VFI:
         print(f"{time.time():.3f}: Comfy-VFI done! {sum(len(v) for v in results.values()) + len(frames)} frames generated")
         
         # Always return float32 — numpy and all downstream ComfyUI nodes require it
-        out_tensor = torch.cat(output_frames, dim=0).to(torch.float16)
+        out_tensor = torch.cat(output_frames, dim=0).to(torch.float32)
 
         stop_time = time.perf_counter()
         elapsed_time = stop_time - start_time
